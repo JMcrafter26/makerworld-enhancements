@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name           Makerworld Enhancements
 // @description    Enhancements for Makerworld website
-// @version        1.0.1
+// @version        1.0.2
 // @icon           https://raw.githubusercontent.com/JMcrafter26/Makerworld-Enhancements/master/assets/icon.png
 //
 // @author         Cufiy (aka JMcrafter26) <https://cufiy.net>
@@ -47,28 +47,14 @@ function getDesignCards() {
         const button = document.createElement('button');
         button.className = 'enhancement-btn';
         button.innerHTML = logoSvg;
-        button.style.background = 'transparent';
-        button.style.border = 'none';
-        button.style.cursor = 'pointer';
-        button.style.position = 'absolute';
-        button.style.top = '0px';
 
         // check if cards first child is a div with a span inside
         const firstChild = card.firstElementChild;
         if (firstChild && firstChild.tagName.toLowerCase() === 'div' && firstChild.querySelector('span')) {
-            button.style.left = '32px';
-        } else {
-            button.style.left = '0px';
+            button.classList.add('enhancement-btn-offset');
         }
-        button.style.zIndex = '1000';
         button.title = 'Makerworld Enhancement';
-        button.style.width = '32px';
-        button.style.height = '32px';
-        button.style.padding = '4px';
-        button.style.borderRadius = '0 0 3px 0';
-        button.style.color = '#b0fd41';
-        button.style.backgroundColor = 'rgba(0, 0, 0)';
-        card.style.position = 'relative';
+        card.classList.add('enhancement-card');
         card.appendChild(button);
         addPopover(button, card);
     }
@@ -78,22 +64,9 @@ function getDesignCards() {
         // new popover for enhancement
         const popover = document.createElement('div');
         popover.classList.add('enhancement-popover', 'MuiPaper-root', 'MuiPaper-elevation', 'MuiPaper-rounded', 'MuiPaper-elevation8', 'MuiPopover-paper', 'MuiMenu-paper', 'MuiMenu-paper', 'mw-css-kqqlx6');
-        popover.style.maxHeight = '150px';
-        popover.style.width = '200px';
-        popover.style.borderRadius = '4px';
-        popover.style.boxShadow = 'rgba(0, 0, 0, 0.06) 0px 8px 24px 0px';
-        popover.style.padding = '8px';
-        popover.style.position = 'absolute';
-        popover.style.top = '36px';
-        popover.style.left = '0px';
-        popover.style.zIndex = '1001';
-        popover.style.height = '100%';
-        popover.style.maxHeight = '300px';
         
         const optionsList = document.createElement('ul');
-        optionsList.style.listStyle = 'none';
-        optionsList.style.padding = '0';
-        optionsList.style.margin = '0';
+        optionsList.classList.add('enhancement-options-list');
 
         const options = [
             {
@@ -139,13 +112,54 @@ function getDesignCards() {
                             alert('Could not fetch model details.');
                             return;
                         }
-                        const modelId = data.pageProps?.design?.id;
-                        if (!modelId) {
-                            alert('Could not find model ID.');
+                        const printProfiles = data.pageProps?.design?.instances || [];
+                        if (!printProfiles || printProfiles.length === 0) {
+                            alert('No print profiles found for this model.');
                             return;
                         }
-                        const bambuUrl = `bambu-studio://import/model/${modelId}`;
 
+                        const firstProfileId = printProfiles[0].id;
+                        const modelSlug = getModelSlug(cardUrl);
+                        try {
+                            openInBambuStudio(firstProfileId, modelSlug);
+                        } catch (error) {
+                            console.error('Error opening in Bambu Studio:', error);
+                            alert('An error occurred while trying to open in Bambu Studio.');
+                        }
+
+
+                    });
+                }
+            },
+            {
+                text: 'Download 3MF Model',
+                icon: 'https://unpkg.com/lucide-static@latest/icons/download.svg',
+                for: 'card',
+                action: () => {
+                    const cardUrl = getCardUrl(card);
+                    if (!cardUrl) {
+                        alert('Could not find design URL.');
+                        return;
+                    }
+                    getModelDetails(cardUrl).then(data => {
+                        if (!data) {
+                            alert('Could not fetch model details.');
+                            return;
+                        }
+                        const printProfiles = data.pageProps?.design?.instances || [];
+                        if (!printProfiles || printProfiles.length === 0) {
+                            alert('No print profiles found for this model.');
+                            return;
+                        }
+                        const firstProfileId = printProfiles[0].id;
+                        const modelSlug = getModelSlug(cardUrl);
+                        getDownloadUrl(firstProfileId, modelSlug).then(downloadUrl => {
+                            if (!downloadUrl) {
+                                alert('Could not get download URL for 3MF file.');
+                                return;
+                            }
+                            window.open(downloadUrl, '_blank');
+                        });
                     });
                 }
             }
@@ -153,10 +167,9 @@ function getDesignCards() {
 
         options.forEach(option => {
             const listItem = document.createElement('li');
-            listItem.style.padding = '8px 0';
-            listItem.style.cursor = 'pointer';
+            listItem.classList.add('enhancement-option-item');
             
-            listItem.innerHTML = `${option.icon ? `<i style="background-image: url(${option.icon}); display: inline-block; width: 16px; height: 16px; background-size: contain; background-repeat: no-repeat; vertical-align: middle; margin-right: 8px; color: white;"></i>` : ''}${option.text}`;
+            listItem.innerHTML = `${option.icon ? `<img src="${option.icon}" class="enhancement-option-icon">` : ''}${option.text}`;
             listItem.addEventListener('click', () => {
                 option.action();
                 document.body.removeChild(popover);
@@ -202,10 +215,82 @@ function getDesignCards() {
     }
 
     function getNextJSBuildId() {
+        // get buildId from window.__NEXT_DATA__.buildId if available
+        if (window.__NEXT_DATA__ && window.__NEXT_DATA__.buildId) {
+            return window.__NEXT_DATA__.buildId;
+        }
         // search on the entire html page for "buildId":"{buildId}" and return the buildId
         const html = document.documentElement.innerHTML;
         const match = html.match(/"buildId":"([\w\d]+)"/);
         return match ? match[1] : null;
+    }
+
+    function openInBambuStudio(printProfileId, modelSlug) {
+        getDownloadUrl(printProfileId, modelSlug).then(downloadUrl => {
+            if (!downloadUrl) {
+                alert('Could not get download URL for F3MF file.');
+                return;
+            }
+            // split the downloadUrl by ? and add a space after the ?
+            const [baseUrl, query] = downloadUrl.split('?');
+            const bambuStudioUrl = `bambustudio://open?file=${encodeURIComponent(baseUrl + (query ? '?' + query : ''))}`;
+            try {
+                console.log('Attempting to open Bambu Studio with URL:', bambuStudioUrl);
+                window.location.href = bambuStudioUrl;
+            } catch (error) {
+                console.error('Error opening Bambu Studio:', error);
+                alert('An error occurred while trying to open Bambu Studio. Please ensure Bambu Studio is installed.');
+            }
+        });
+    }
+
+    async function getDownloadUrl(printProfileId, modelSlug) {
+        try {
+    const response = await fetch(`https://makerworld.com/api/v1/design-service/instance/${printProfileId}/f3mf?type=download`, {
+    "credentials": "include",
+    "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0",
+        "Accept": "*/*",
+        "Accept-Language": "en-US;q=0.7,en;q=0.3",
+        "X-BBL-Client-Type": "web",
+        "X-BBL-Client-Version": "00.00.00.01",
+        "X-BBL-App-Source": "makerworld",
+        "X-BBL-Client-Name": "MakerWorld",
+        "Content-Type": "application/json",
+        "Sec-GPC": "1",
+        "Alt-Used": "makerworld.com",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "Priority": "u=0"
+    },
+    "referrer": `https://makerworld.com/en/models/${modelSlug}`,
+    "method": "GET",
+    "mode": "cors"
+});
+        if (response.ok) {
+            console.log('F3MF file download response received.');
+            const data = await response.json();
+            if (data && data.url) {
+                return data.url;
+            } else if (data && data.code == 1 && data.captchaId) {
+                alert('Captcha required to download this F3MF file. Please complete the captcha on the Makerworld website and try again.');
+                return null;
+            } else {
+                console.error('No download URL found in response data.');
+                return null;
+            }
+        } else {
+            if (response.status === 418) {
+                alert('Captcha required to download this F3MF file. Please complete the captcha on the Makerworld website and try again.');
+                return null;
+            }
+            alert('Failed to download F3MF file from Makerworld.');
+        }
+        } catch (error) {
+            console.error('Error downloading F3MF file:', error);
+            alert('An error occurred while downloading the F3MF file.');
+        }
     }
 
     async function getModelDetails(url, modelId = null) {
@@ -262,14 +347,36 @@ function getDesignCards() {
     function injectCSS() {
         const style = document.createElement('style');
         style.innerHTML = `
+        .enhancement-card {
+            position: relative;
+        }
+        .enhancement-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            position: absolute;
+            top: 0px;
+            left: 0px;
+            z-index: 1000;
+            width: 32px;
+            height: 32px;
+            padding: 4px;
+            border-radius: 0 0 3px 0;
+            color: #b0fd41;
+            background-color: rgba(0, 0, 0);
+        }
+        .enhancement-btn-offset {
+            left: 32px;
+        }
         .enhancement-popover {
             position: absolute;
             top: 36px;
             left: 0;
             z-index: 1001;
             width: 200px;
-            max-height: 150px;
-            padding: 8px;
+            height: auto;
+            max-height: 300px;
+            padding: 8px 0;
             background-color: rgb(45, 45, 49);
             border: 0.9px solid rgb(82, 82, 82);
             border-radius: 4px;
@@ -278,20 +385,31 @@ function getDesignCards() {
             overflow-y: auto;
             transition: opacity 0.211s cubic-bezier(0.4, 0, 0.2, 1), transform 0.141s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .enhancement-popover ul {
+        .enhancement-options-list {
             margin: 0;
-            padding: 8px 0;
+            padding: 0;
             list-style: none;
         }
-        .enhancement-popover li {
-            padding: 8px 0;
+        .enhancement-option-item {
+            padding: 4px 16px 4px 16px;
             cursor: pointer;
             display: flex;
             align-items: center;
             user-select: none;
+            border-radius: 2px;
         }
-        .enhancement-popover li:hover {
-            opacity: 0.8;
+        .enhancement-option-item:hover {
+            background-color: rgba(52, 53, 58, 1);
+        }
+        .enhancement-option-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            vertical-align: middle;
+            margin-right: 8px;
+            filter: invert(1);
         }
         `;
         document.head.appendChild(style);
