@@ -1,29 +1,26 @@
 // ==UserScript==
-// @name          	Makerworld Enhancements
-// @description     Enhancements for Makerworld website
-// @version         1.0.0
-// @icon            https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/assets/icon.png
+// @name           Makerworld Enhancements
+// @description    Enhancements for Makerworld website
+// @version        1.0.1
+// @icon           https://raw.githubusercontent.com/JMcrafter26/Makerworld-Enhancements/master/assets/icon.png
 //
-// @author			Cufiy (aka JMcrafter26) <cufiy.net>
-// @namespace       http://github.com/JMcrafter26
-// @downloadURL		https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
+// @author         Cufiy (aka JMcrafter26) <https://cufiy.net>
+// @namespace      https://github.com/JMcrafter26
 //
-// @license         AGPL-3.0 - http://www.gnu.org/licenses/agpl-3.0.txt
-// @copyright       Copyright (C) 2025, by Cufiy <cufiy.net>
+// @downloadURL    https://raw.githubusercontent.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
+// @updateURL      https://raw.githubusercontent.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
 //
-// @include         https://makerworld.com/*
-// @include         https://makerworld.com.cn/*
+// @license        AGPL-3.0
+// @copyright      Copyright (C) 2025, Cufiy
 //
-// @match			https://makerworld.com/*
-// @match			https://makerworld.com.cn/*
+// @match          https://makerworld.com/*
+// @match          https://makerworld.com.cn/*
 //
+// @run-at         document-end
 //
-// @updateURL		https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
+// @resource       exampleImage https://www.example.com/example.png
 //
-// @run-at			document-start|document-end
-// @resource		resourceName	http://www.example.com/example.png
-// @unwrap
-// ==UserScript==
+// ==/UserScript==
 
 /**
  * Makerworld Enhancements Userscript
@@ -90,6 +87,8 @@ function getDesignCards() {
         popover.style.top = '36px';
         popover.style.left = '0px';
         popover.style.zIndex = '1001';
+        popover.style.height = '100%';
+        popover.style.maxHeight = '300px';
         
         const optionsList = document.createElement('ul');
         optionsList.style.listStyle = 'none';
@@ -113,7 +112,7 @@ function getDesignCards() {
             },
             {
                 text: 'Search on Thingiverse',
-                icon: 'https://unpkg.com/lucide-static@latest/icons/box-search.svg',
+                icon: 'https://unpkg.com/lucide-static@latest/icons/search.svg',
                 for: 'card',
                 action: () => {
                     const cardName = getCardName(card);
@@ -124,6 +123,31 @@ function getDesignCards() {
                     const query = encodeURIComponent(cardName);
                     window.open(`https://www.thingiverse.com/search?q=${query}`, '_blank');
                 }
+            },
+            {
+                text: 'Open in Bambu Studio',
+                icon: 'https://unpkg.com/lucide-static@latest/icons/box.svg',
+                for: 'card',
+                action: () => {
+                    const cardUrl = getCardUrl(card);
+                    if (!cardUrl) {
+                        alert('Could not find design URL.');
+                        return;
+                    }
+                    getModelDetails(cardUrl).then(data => {
+                        if (!data) {
+                            alert('Could not fetch model details.');
+                            return;
+                        }
+                        const modelId = data.pageProps?.design?.id;
+                        if (!modelId) {
+                            alert('Could not find model ID.');
+                            return;
+                        }
+                        const bambuUrl = `bambu-studio://import/model/${modelId}`;
+
+                    });
+                }
             }
         ];
 
@@ -132,7 +156,7 @@ function getDesignCards() {
             listItem.style.padding = '8px 0';
             listItem.style.cursor = 'pointer';
             
-            listItem.innerHTML = `${option.icon ? `<i style="background-image: url(${option.icon}); display: inline-block; width: 16px; height: 16px; background-size: contain; background-repeat: no-repeat; vertical-align: middle; margin-right: 8px;"></i>` : ''}${option.text}`;
+            listItem.innerHTML = `${option.icon ? `<i style="background-image: url(${option.icon}); display: inline-block; width: 16px; height: 16px; background-size: contain; background-repeat: no-repeat; vertical-align: middle; margin-right: 8px; color: white;"></i>` : ''}${option.text}`;
             listItem.addEventListener('click', () => {
                 option.action();
                 document.body.removeChild(popover);
@@ -162,6 +186,77 @@ function getDesignCards() {
             return titleElement.innerText.trim();
         }
         return false;
+    }
+
+    function getCardUrl(card) {
+        const linkElement = card.querySelector('.design-bottom-row .translated-text a');
+        if (linkElement) {
+            return linkElement.href;
+        }
+        return false;
+    }
+
+    function getModelSlug(url) {
+        const match = url.match(/\/models\/([\w-]+)/);
+        return match ? match[1] : null;
+    }
+
+    function getNextJSBuildId() {
+        // search on the entire html page for "buildId":"{buildId}" and return the buildId
+        const html = document.documentElement.innerHTML;
+        const match = html.match(/"buildId":"([\w\d]+)"/);
+        return match ? match[1] : null;
+    }
+
+    async function getModelDetails(url, modelId = null) {
+        // if modelid is not set, get it from url: e.g. https://makerworld.com/de/models/1866618-wheel-loader-kit-card#profileId-1997183 --> 1866618
+        if (!modelId) {
+            const match = url.match(/\/models\/(\d+)/);
+            if (match) {
+                modelId = match[1];
+            }
+        }
+        if (!modelId) {
+            return null;
+        }
+
+        const moduleSlug = getModelSlug(url);
+        if (!moduleSlug) {
+            return null;
+        }
+
+        console.log('Fetching model details for model ID:', modelId);
+        console.log('Using module slug:', moduleSlug);
+
+        let fetchUrl = `https://makerworld.com/_next/data/${getNextJSBuildId()}/de/models/${moduleSlug}.json?designId=${moduleSlug}`;
+        try {
+        const response = await fetch(fetchUrl, {
+            "credentials": "include",
+            "headers": {
+                "User-Agent": window.navigator.userAgent,
+                "Accept": "*/*",
+                "Accept-Language": "en-US;q=0.7,en;q=0.3",
+                "x-nextjs-data": "1",
+                "Sec-GPC": "1",
+                "Alt-Used": "makerworld.com",
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-origin",
+                "Priority": "u=0"
+            },
+            "referrer": "https://makerworld.com/de",
+            "method": "GET",
+            "mode": "cors"
+        });
+        const data = await response.json();
+        console.log('Fetched model details:', data);
+
+
+        return data;
+        } catch (error) {
+            console.error('Error fetching model details:', error);
+            return null;
+        }
     }
 
     function injectCSS() {

@@ -1,6 +1,6 @@
-# Makerworld Enhancements
+# MakerWorld Enhancements
 
-This userscript provides various enhancements for the Makerworld website, including quick search functionality and many more to come.
+This userscript provides various enhancements for the MakerWorld website, including quick search functionality and many more to come.
 
 > [!NOTE]
 > This project is in its early stages. More features will be added in future updates. Stay tuned!
@@ -19,30 +19,34 @@ This userscript provides various enhancements for the Makerworld website, includ
 
 ### Via Greasyfork
 
-![Greasyfork](https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/greasy-fork/cozy.svg)
+[![Greasyfork](https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/greasy-fork/cozy.svg)](https://greasyfork.org/en/scripts/560107-makerworld-enhancements)
 
-You can find this userscript on [Greasyfork](https://greasyfork.org/en/scripts/XYZ) (link to be added once uploaded). Simply click the "Install this script" button to add it to your userscript manager.
+You can find this userscript on [Greasyfork](https://greasyfork.org/en/scripts/560107-makerworld-enhancements). Simply click the "Install this script" button to add it to your userscript manager.
 
 ### Via GitHub
 
-![GitHub](https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/github/cozy.svg)
+[![GitHub](https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/available/github/cozy.svg)](https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js)
 
 You can also install the userscript directly from this GitHub repository:
 
 1. Copy the following URL:
-   ```
+
+   ```ur
    https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
    ```
+
 2. Open your userscript manager and choose the option to add a new script from a URL.
 3. Paste the copied URL and confirm the installation.
 
 #### iOS
 
 1. Open the following URL in Safari on your iOS device:
-   ```
+
+   ```url
    https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
    ```
-   or click [here](https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js).
+
+   or [open this link directly](https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js).
 2. In the extension menu, select "Userscripts" to install the script.
 3. Confirm the installation in the Userscripts pop-up.
 
