@@ -1,29 +1,26 @@
 // ==UserScript==
-// @name          	Makerworld Enhancements
-// @description     Enhancements for Makerworld website
-// @version         1.0.0
-// @icon            https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/assets/icon.png
+// @name           Makerworld Enhancements
+// @description    Enhancements for Makerworld website
+// @version        1.0.0
+// @icon           https://raw.githubusercontent.com/JMcrafter26/Makerworld-Enhancements/master/assets/icon.png
 //
-// @author			Cufiy (aka JMcrafter26) <cufiy.net>
-// @namespace       http://github.com/JMcrafter26
-// @downloadURL		https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
+// @author         Cufiy (aka JMcrafter26) <https://cufiy.net>
+// @namespace      https://github.com/JMcrafter26
 //
-// @license         AGPL-3.0 - http://www.gnu.org/licenses/agpl-3.0.txt
-// @copyright       Copyright (C) 2025, by Cufiy <cufiy.net>
+// @downloadURL    https://raw.githubusercontent.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
+// @updateURL      https://raw.githubusercontent.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
 //
-// @include         https://makerworld.com/*
-// @include         https://makerworld.com.cn/*
+// @license        AGPL-3.0
+// @copyright      Copyright (C) 2025, Cufiy
 //
-// @match			https://makerworld.com/*
-// @match			https://makerworld.com.cn/*
+// @match          https://makerworld.com/*
+// @match          https://makerworld.com.cn/*
 //
+// @run-at         document-end
 //
-// @updateURL		https://raw.github.com/JMcrafter26/Makerworld-Enhancements/master/userscript/makerworld-enhancements.user.js
+// @resource       exampleImage https://www.example.com/example.png
 //
-// @run-at			document-start|document-end
-// @resource		resourceName	http://www.example.com/example.png
-// @unwrap
-// ==UserScript==
+// ==/UserScript==
 
 /**
  * Makerworld Enhancements Userscript
