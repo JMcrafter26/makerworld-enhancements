@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name           Makerworld Enhancements
 // @description    Enhancements for Makerworld website
-// @version        1.0.2
+// @version        1.0.3
 // @icon           https://raw.githubusercontent.com/JMcrafter26/Makerworld-Enhancements/master/assets/icon.png
 //
 // @author         Cufiy (aka JMcrafter26) <https://cufiy.net>
@@ -32,9 +32,115 @@
 
     const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles-icon lucide-sparkles"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>`;
 
-function getDesignCards() {
-    return document.querySelectorAll('.js-design-card');
-}
+    function getEnhancementOptions(context = 'card') {
+        const options = [
+            {
+                text: 'Search on Printables',
+                icon: 'https://unpkg.com/lucide-static@latest/icons/search.svg',
+                for: 'card,details',
+                action: (contextData) => {
+                    const name = context === 'details' ? getModelNameFromPage() : getCardName(contextData);
+                    if (!name) {
+                        alert('Could not find design name.');
+                        return;
+                    }
+                    const query = encodeURIComponent(name);
+                    window.open(`https://www.printables.com/search?q=${query}`, '_blank');
+                }
+            },
+            {
+                text: 'Search on Thingiverse',
+                icon: 'https://unpkg.com/lucide-static@latest/icons/search.svg',
+                for: 'card,details',
+                action: (contextData) => {
+                    const name = context === 'details' ? getModelNameFromPage() : getCardName(contextData);
+                    if (!name) {
+                        alert('Could not find design name.');
+                        return;
+                    }
+                    const query = encodeURIComponent(name);
+                    window.open(`https://www.thingiverse.com/search?q=${query}`, '_blank');
+                }
+            },
+            {
+                text: 'Open in Bambu Studio',
+                icon: 'https://unpkg.com/lucide-static@latest/icons/box.svg',
+                for: 'card',
+                action: (contextData) => {
+                    const url = context === 'details' ? window.location.href : getCardUrl(contextData);
+                    if (!url) {
+                        alert('Could not find design URL.');
+                        return;
+                    }
+                    getModelDetails(url).then(data => {
+                        if (!data) {
+                            alert('Could not fetch model details.');
+                            return;
+                        }
+                        const printProfiles = data.pageProps?.design?.instances || [];
+                        if (!printProfiles || printProfiles.length === 0) {
+                            alert('No print profiles found for this model.');
+                            return;
+                        }
+                        const firstProfileId = printProfiles[0].id;
+                        const modelSlug = getModelSlug(url);
+                        try {
+                            openInBambuStudio(firstProfileId, modelSlug);
+                        } catch (error) {
+                            console.error('Error opening in Bambu Studio:', error);
+                            alert('An error occurred while trying to open in Bambu Studio.');
+                        }
+                    });
+                }
+            },
+            {
+                text: 'Download 3MF Model',
+                icon: 'https://unpkg.com/lucide-static@latest/icons/download.svg',
+                for: 'card',
+                action: (contextData) => {
+                    const url = context === 'details' ? window.location.href : getCardUrl(contextData);
+                    if (!url) {
+                        alert('Could not find design URL.');
+                        return;
+                    }
+                    getModelDetails(url).then(data => {
+                        if (!data) {
+                            alert('Could not fetch model details.');
+                            return;
+                        }
+                        const printProfiles = data.pageProps?.design?.instances || [];
+                        if (!printProfiles || printProfiles.length === 0) {
+                            alert('No print profiles found for this model.');
+                            return;
+                        }
+                        const firstProfileId = printProfiles[0].id;
+                        const modelSlug = getModelSlug(url);
+                        getDownloadUrl(firstProfileId, modelSlug).then(downloadUrl => {
+                            if (!downloadUrl) {
+                                alert('Could not get download URL for 3MF file.');
+                                return;
+                            }
+                            window.open(downloadUrl, '_blank');
+                        });
+                    });
+                }
+            }
+        ];
+
+        // Filter options based on context
+        return options.filter(option => {
+            const contexts = option.for.split(',').map(c => c.trim());
+            return contexts.includes(context);
+        });
+    }
+
+    function isModelViewPage() {
+        return /\/models\/[\w-]+/.test(window.location.pathname);
+    }
+
+    function getDesignCards() {
+        return document.querySelectorAll('.js-design-card');
+    }
 
     function addButtonToDesignCard(card) {
         // Prevent duplicate buttons
@@ -68,102 +174,7 @@ function getDesignCards() {
         const optionsList = document.createElement('ul');
         optionsList.classList.add('enhancement-options-list');
 
-        const options = [
-            {
-                text: 'Search on Printables',
-                icon: 'https://unpkg.com/lucide-static@latest/icons/search.svg',
-                for: 'card',
-                action: () => {
-                    const cardName = getCardName(card);
-                    if (!cardName) {
-                        alert('Could not find design name.');
-                        return;
-                    }
-                    const query = encodeURIComponent(cardName);
-                    window.open(`https://www.printables.com/search?q=${query}`, '_blank');
-                }
-            },
-            {
-                text: 'Search on Thingiverse',
-                icon: 'https://unpkg.com/lucide-static@latest/icons/search.svg',
-                for: 'card',
-                action: () => {
-                    const cardName = getCardName(card);
-                    if (!cardName) {
-                        alert('Could not find design name.');
-                        return;
-                    }
-                    const query = encodeURIComponent(cardName);
-                    window.open(`https://www.thingiverse.com/search?q=${query}`, '_blank');
-                }
-            },
-            {
-                text: 'Open in Bambu Studio',
-                icon: 'https://unpkg.com/lucide-static@latest/icons/box.svg',
-                for: 'card',
-                action: () => {
-                    const cardUrl = getCardUrl(card);
-                    if (!cardUrl) {
-                        alert('Could not find design URL.');
-                        return;
-                    }
-                    getModelDetails(cardUrl).then(data => {
-                        if (!data) {
-                            alert('Could not fetch model details.');
-                            return;
-                        }
-                        const printProfiles = data.pageProps?.design?.instances || [];
-                        if (!printProfiles || printProfiles.length === 0) {
-                            alert('No print profiles found for this model.');
-                            return;
-                        }
-
-                        const firstProfileId = printProfiles[0].id;
-                        const modelSlug = getModelSlug(cardUrl);
-                        try {
-                            openInBambuStudio(firstProfileId, modelSlug);
-                        } catch (error) {
-                            console.error('Error opening in Bambu Studio:', error);
-                            alert('An error occurred while trying to open in Bambu Studio.');
-                        }
-
-
-                    });
-                }
-            },
-            {
-                text: 'Download 3MF Model',
-                icon: 'https://unpkg.com/lucide-static@latest/icons/download.svg',
-                for: 'card',
-                action: () => {
-                    const cardUrl = getCardUrl(card);
-                    if (!cardUrl) {
-                        alert('Could not find design URL.');
-                        return;
-                    }
-                    getModelDetails(cardUrl).then(data => {
-                        if (!data) {
-                            alert('Could not fetch model details.');
-                            return;
-                        }
-                        const printProfiles = data.pageProps?.design?.instances || [];
-                        if (!printProfiles || printProfiles.length === 0) {
-                            alert('No print profiles found for this model.');
-                            return;
-                        }
-                        const firstProfileId = printProfiles[0].id;
-                        const modelSlug = getModelSlug(cardUrl);
-                        getDownloadUrl(firstProfileId, modelSlug).then(downloadUrl => {
-                            if (!downloadUrl) {
-                                alert('Could not get download URL for 3MF file.');
-                                return;
-                            }
-                            window.open(downloadUrl, '_blank');
-                        });
-                    });
-                }
-            }
-        ];
+        const options = getEnhancementOptions('card');
 
         options.forEach(option => {
             const listItem = document.createElement('li');
@@ -171,7 +182,7 @@ function getDesignCards() {
             
             listItem.innerHTML = `${option.icon ? `<img src="${option.icon}" class="enhancement-option-icon">` : ''}${option.text}`;
             listItem.addEventListener('click', () => {
-                option.action();
+                option.action(card);
                 document.body.removeChild(popover);
             });
             optionsList.appendChild(listItem);
@@ -191,6 +202,20 @@ function getDesignCards() {
             }
             card.appendChild(popover);
         });
+    }
+
+    function getModelNameFromPage() {
+        // Try to get from h1 tag
+        const h1 = document.querySelector('h1');
+        if (h1) {
+            return h1.innerText.trim();
+        }
+        // Fallback to page title
+        const title = document.title;
+        if (title) {
+            return title.split('|')[0].trim();
+        }
+        return false;
     }
 
     function getCardName(card) {
@@ -344,6 +369,32 @@ function getDesignCards() {
         }
     }
 
+    function addButtonGroupToModelView() {
+        // Find the stats div
+        const statsDiv = document.querySelector('.mw-css-pn2l0k');
+        if (!statsDiv || statsDiv.hasAttribute('data-enhancement-added')) {
+            return;
+        }
+
+        statsDiv.setAttribute('data-enhancement-added', 'true');
+
+        const buttonGroup = document.createElement('div');
+        buttonGroup.className = 'enhancement-button-group';
+        
+        const buttons = getEnhancementOptions('details');
+
+        buttons.forEach(btn => {
+            const button = document.createElement('button');
+            button.className = 'enhancement-model-btn';
+            button.innerHTML = `${btn.icon ? `<img src="${btn.icon}" class="enhancement-option-icon">` : ''}${btn.text}`;
+            button.addEventListener('click', () => btn.action(null));
+            buttonGroup.appendChild(button);
+        });
+
+        // Insert after the stats div
+        statsDiv.parentNode.insertBefore(buttonGroup, statsDiv.nextSibling);
+    }
+
     function injectCSS() {
         const style = document.createElement('style');
         style.innerHTML = `
@@ -364,6 +415,7 @@ function getDesignCards() {
             border-radius: 0 0 3px 0;
             color: #b0fd41;
             background-color: rgba(0, 0, 0);
+
         }
         .enhancement-btn-offset {
             left: 32px;
@@ -379,7 +431,7 @@ function getDesignCards() {
             padding: 8px 0;
             background-color: rgb(45, 45, 49);
             border: 0.9px solid rgb(82, 82, 82);
-            border-radius: 4px;
+            border-radius: .35em;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
             color: rgb(239, 239, 240);
             overflow-y: auto;
@@ -397,6 +449,11 @@ function getDesignCards() {
             align-items: center;
             user-select: none;
             border-radius: 2px;
+
+            
+            font-family: "Open Sans", "system-ui", "Segoe UI", Roboto, Oxygen, Ubuntu, "Fira Sans", "Droid Sans", "Helvetica Neue";
+            font-size: 14px;
+            font-weight: 600;
         }
         .enhancement-option-item:hover {
             background-color: rgba(52, 53, 58, 1);
@@ -409,6 +466,36 @@ function getDesignCards() {
             background-repeat: no-repeat;
             vertical-align: middle;
             margin-right: 8px;
+            filter: invert(1);
+        }
+        .enhancement-button-group {
+            display: flex;
+            align-items: center;
+            height: 46px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+            border: 1px solid rgb(82, 82, 82);
+            border-radius: 4px;
+            background-color: transparent;
+        }
+        .enhancement-model-btn {
+            height: 46px;
+            background-color: transparent;
+            border: transparent;
+            padding: 0 12px;
+            margin: 0;
+            border-right: 1px solid rgb(82, 82, 82);
+            color: rgb(239, 239, 240);
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+        }
+        .enhancement-model-btn:hover {
+            background-color: rgba(52, 53, 58, 1);
+        }
+        .enhancement-model-btn img {
+            width: 16px;
+            height: 16px;
             filter: invert(1);
         }
         `;
@@ -434,6 +521,13 @@ function getDesignCards() {
                                 }
                             });
                         }
+                        // Check for model view stats div
+                        if (isModelViewPage()) {
+                            const statsDiv = node.querySelector && node.querySelector('.mw-css-pn2l0k');
+                            if (statsDiv && !statsDiv.hasAttribute('data-enhancement-added')) {
+                                addButtonGroupToModelView();
+                            }
+                        }
                     }
                 });
             });
@@ -444,10 +538,18 @@ function getDesignCards() {
 
     function enhanceMakerworld() {
         injectCSS();
-        const designCards = getDesignCards();
-        designCards.forEach(card => {
-            addButtonToDesignCard(card);
-        });
+        
+        if (isModelViewPage()) {
+            // On model view page, add button group
+            addButtonGroupToModelView();
+        } else {
+            // On other pages, add buttons to design cards
+            const designCards = getDesignCards();
+            designCards.forEach(card => {
+                addButtonToDesignCard(card);
+            });
+        }
+        
         addMutationObserver();
         
         // Single event listener for closing popovers (event delegation)
